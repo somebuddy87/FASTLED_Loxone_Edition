@@ -14,6 +14,8 @@
 
 // Farbtemperatur zu RGB Implementierung in Anlehnung an http://www.tannerhelland.com/4435/convert-temperature-rgb-algorithm-code/
 
+//DMA aktivieren
+#define FASTLED_ESP8266_DMA
 
 //RGBW Implementierung aktivieren
 #define FASTLED_RGBW
@@ -37,7 +39,7 @@
 #define NUM_LEDS 300
 
 //LED Pin
-#define LED_PIN 5
+#define LED_PIN 3
 
 //Hostname fuer Arduino OTA
 const char* hostname = "Kueche";
