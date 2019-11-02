@@ -78,4 +78,4 @@ TBD
 ## Vorlage importieren
 TBD
 
-_Die mit Sternchen (*) gekennzeichneten Links sind sogenannte Affiliate-Links. Wenn du auf so einen Affiliate-Link klickst und über diesen Link einkaufst, bekomme ich von dem betreffenden Online-Shop oder Anbieter eine Provision. Für dich verändert sich der Preis nicht._e
+Die mit Sternchen (*) gekennzeichneten Links sind sogenannte Affiliate-Links. Wenn du auf so einen Affiliate-Link klickst und über diesen Link einkaufst, bekomme ich von dem betreffenden Online-Shop oder Anbieter eine Provision. Für dich verändert sich der Preis nicht.
