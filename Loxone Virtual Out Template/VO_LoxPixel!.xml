@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<VirtualOut Title="LoxPixel!" Comment="" Address="/dev/udp/192.168.178.13/8888" CmdInit="" CloseAfterSend="true" CmdSep=";">
+	<VirtualOutCmd Title="Effekt" Comment="" CmdOnMethod="GET" CmdOffMethod="GET" CmdOn="@&lt;v&gt;" CmdOnHTTP="" CmdOnPost="" CmdOff="" CmdOffHTTP="" CmdOffPost="" Analog="true" Repeat="0" RepeatRate="0"/>
+	<VirtualOutCmd Title="Wand1" Comment="" CmdOnMethod="GET" CmdOffMethod="GET" CmdOn="#&lt;v&gt;" CmdOnHTTP="" CmdOnPost="" CmdOff="" CmdOffHTTP="" CmdOffPost="" Analog="true" Repeat="0" RepeatRate="0"/>
+	<VirtualOutCmd Title="Wand2" Comment="" CmdOnMethod="GET" CmdOffMethod="GET" CmdOn="!&lt;v&gt;" CmdOnHTTP="" CmdOnPost="" CmdOff="" CmdOffHTTP="" CmdOffPost="" Analog="true" Repeat="0" RepeatRate="0"/>
+	<VirtualOutCmd Title="Wand3" Comment="" CmdOnMethod="GET" CmdOffMethod="GET" CmdOn="?&lt;v&gt;" CmdOnHTTP="" CmdOnPost="" CmdOff="" CmdOffHTTP="" CmdOffPost="" Analog="true" Repeat="0" RepeatRate="0"/>
+	<VirtualOutCmd Title="Wand4" Comment="" CmdOnMethod="GET" CmdOffMethod="GET" CmdOn="*&lt;v&gt;" CmdOnHTTP="" CmdOnPost="" CmdOff="" CmdOffHTTP="" CmdOffPost="" Analog="true" Repeat="0" RepeatRate="0"/>
+	<VirtualOutCmd Title="Farbverlauf 1" Comment="" CmdOnMethod="GET" CmdOffMethod="GET" CmdOn="a&lt;v&gt;" CmdOnHTTP="" CmdOnPost="" CmdOff="" CmdOffHTTP="" CmdOffPost="" Analog="true" Repeat="0" RepeatRate="0"/>
+	<VirtualOutCmd Title="Farbverlauf 2" Comment="" CmdOnMethod="GET" CmdOffMethod="GET" CmdOn="b&lt;v&gt;" CmdOnHTTP="" CmdOnPost="" CmdOff="" CmdOffHTTP="" CmdOffPost="" Analog="true" Repeat="0" RepeatRate="0"/>
+	<VirtualOutCmd Title="Farbverlauf 3" Comment="" CmdOnMethod="GET" CmdOffMethod="GET" CmdOn="c&lt;v&gt;" CmdOnHTTP="" CmdOnPost="" CmdOff="" CmdOffHTTP="" CmdOffPost="" Analog="true" Repeat="0" RepeatRate="0"/>
+	<VirtualOutCmd Title="Farbverlauf 4" Comment="" CmdOnMethod="GET" CmdOffMethod="GET" CmdOn="d&lt;v&gt;" CmdOnHTTP="" CmdOnPost="" CmdOff="" CmdOffHTTP="" CmdOffPost="" Analog="true" Repeat="0" RepeatRate="0"/>
+	<VirtualOutCmd Title="Wand5" Comment="" CmdOnMethod="GET" CmdOffMethod="GET" CmdOn="=&lt;v&gt;" CmdOnHTTP="" CmdOnPost="" CmdOff="" CmdOffHTTP="" CmdOffPost="" Analog="true" Repeat="0" RepeatRate="0"/>
+	<VirtualOutCmd Title="Wand6" Comment="" CmdOnMethod="GET" CmdOffMethod="GET" CmdOn="&amp;&lt;v&gt;" CmdOnHTTP="" CmdOnPost="" CmdOff="" CmdOffHTTP="" CmdOffPost="" Analog="true" Repeat="0" RepeatRate="0"/>
+	<VirtualOutCmd Title="Wand7" Comment="" CmdOnMethod="GET" CmdOffMethod="GET" CmdOn="%&lt;v&gt;" CmdOnHTTP="" CmdOnPost="" CmdOff="" CmdOffHTTP="" CmdOffPost="" Analog="true" Repeat="0" RepeatRate="0"/>
+	<VirtualOutCmd Title="Wand8" Comment="" CmdOnMethod="GET" CmdOffMethod="GET" CmdOn="$&lt;v&gt;" CmdOnHTTP="" CmdOnPost="" CmdOff="" CmdOffHTTP="" CmdOffPost="" Analog="true" Repeat="0" RepeatRate="0"/>
+</VirtualOut>
