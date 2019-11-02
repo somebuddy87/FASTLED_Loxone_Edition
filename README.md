@@ -50,6 +50,7 @@ usw.
 - Effekte unter Verwendung des kompletten LED Streifen aus der Loxone App starten
 
 Beispielvideo (Testsetup) :
+
 [![Beispielvideo](http://img.youtube.com/vi/hsXI4zp1-I4/0.jpg)](http://www.youtube.com/watch?v=hsXI4zp1-I4)
 
 - Einfaches Webinterface zur Einstellung der wichtigsten Parameter
