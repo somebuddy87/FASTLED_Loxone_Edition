@@ -5,7 +5,6 @@
 //    11/2019                                           //
 //////////////////////////////////////////////////////////
 
-
 // Credits
 
 // Die in diesem Beispiel verwendeten Effekte sind nicht auf meinem Mist gewachsen. Ich habe diese lediglich aus verschiedenen Effekt Bibliotheken zusammengesucht und in dieses Beispiel eingefuegt. Darf gerne erweitert werden!
@@ -37,6 +36,7 @@
 #define NUM_LEDS 300
 
 //LED Pin
+//Solange FASTLED_ESP8266_DMA aktiviert ist, wird als LED PIN immer der RX Pin des Node MCU verwendet
 #define LED_PIN 3
 
 //Port fuer Arduino OTA
@@ -806,7 +806,7 @@ void effekte()
 
   case 13:
   {
-
+    CylonBounce(0xff, 0, 0, 4, 10, 50);
     break;
   }
   default:
@@ -1437,6 +1437,55 @@ void fillnoise8()
   dist += beatsin8(10, 1, 4); // Moving along the distance (that random number we started out with). Vary it a bit with a sine wave.
   // In some sketches, I've used millis() instead of an incremented counter. Works a treat.
 } // fillnoise8()
+
+int cylon_i = 0;
+int cylon_dir = 0;
+
+void CylonBounce(byte red, byte green, byte blue, int EyeSize, int SpeedDelay, int ReturnDelay)
+{
+
+  if (cylon_dir == 0 && (cylon_i < NUM_LEDS - EyeSize - 2))
+  {
+    setAll(0, 0, 0);
+    setPixel(cylon_i, red / 10, green / 10, blue / 10);
+    for (int j = 1; j <= EyeSize; j++)
+    {
+      setPixel(cylon_i + j, red, green, blue);
+    }
+    setPixel(cylon_i + EyeSize + 1, red / 10, green / 10, blue / 10);
+    showStrip();
+    delay(SpeedDelay);
+    cylon_i++;
+  }
+
+  if (cylon_dir == 0 && (cylon_i >= (NUM_LEDS - EyeSize - 2)))
+  {
+    cylon_dir = 1;
+
+    delay(ReturnDelay);
+  }
+
+  if (cylon_dir == 1 && cylon_i > 0)
+  {
+    setAll(0, 0, 0);
+    setPixel(cylon_i, red / 10, green / 10, blue / 10);
+    for (int j = 1; j <= EyeSize; j++)
+    {
+      setPixel(cylon_i + j, red, green, blue);
+    }
+    setPixel(cylon_i + EyeSize + 1, red / 10, green / 10, blue / 10);
+    showStrip();
+    delay(SpeedDelay);
+    cylon_i--;
+  }
+
+  if (cylon_dir == 1 && cylon_i == 0)
+  {
+    cylon_dir = 0;
+    cylon_i = 0;
+    delay(ReturnDelay);
+  }
+}
 
 void configSaved()
 {
