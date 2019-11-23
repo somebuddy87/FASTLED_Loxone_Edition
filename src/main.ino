@@ -109,7 +109,7 @@ CRGBPalette16 targetPalette(OceanColors_p);
 const char thingName[] = "LOXpixel!";
 
 //Hostname fuer Arduino OTA
-const char *hostname = thingName;
+const char* hostname = thingName;
 
 // -- Initial password to connect to the Thing, when it creates an own Access Point.
 const char wifiInitialApPassword[] = "loxpixel";
@@ -118,7 +118,7 @@ const char wifiInitialApPassword[] = "loxpixel";
 #define NUMBER_LEN 32
 
 // -- Configuration specific key. The value should be modified if config structure was changed.
-#define CONFIG_VERSION "Lox45678"
+#define CONFIG_VERSION "Lox0815"
 
 // -- When CONFIG_PIN is pulled to ground on startup, the Thing will use the initial
 //      password to buld an AP. (E.g. in case of lost password)
@@ -132,8 +132,8 @@ const char wifiInitialApPassword[] = "loxpixel";
 // -- Callback method declarations.
 void configSaved();
 boolean formValidator();
-boolean connectAp(const char *apName, const char *password);
-void connectWifi(const char *ssid, const char *password);
+boolean connectAp(const char* apName, const char* password);
+void connectWifi(const char* ssid, const char* password);
 
 DNSServer dnsServer;
 WebServer server(80);
@@ -143,9 +143,12 @@ char gatewayValue[STRING_LEN];
 char netmaskValue[STRING_LEN];
 
 char stringParamValue[STRING_LEN];
-char intParamValue[NUMBER_LEN];
+
+// For first Start!
+char intParamValue[NUMBER_LEN] = "300" ;
 char stripeTypeParamValue[NUMBER_LEN];
 char datenpinParamValue[NUMBER_LEN];
+
 char brightnessParamValue[NUMBER_LEN];
 
 char floatParamValue[NUMBER_LEN];
@@ -260,32 +263,39 @@ const char CUSTOMHTML_FORM_END[] PROGMEM = "</fieldset><button type='submit'>Sav
 // methods of IotWebConfHtmlFormatProvider .
 class CustomHtmlFormatProvider : public IotWebConfHtmlFormatProvider
 {
-protected:
-  String getStyleInner() override
-  {
-    return String(FPSTR(CUSTOMHTML_STYLE_INNER)) +
-           IotWebConfHtmlFormatProvider::getStyleInner();
-  }
-  String getScriptInner() override
-  {
-    return IotWebConfHtmlFormatProvider::getScriptInner() +
-           String(FPSTR(CUSTOMHTML_SCRIPT_INNER));
-  }
-  String getBodyInner() override
-  {
-    return String(FPSTR(CUSTOMHTML_BODY_INNER)) +
-           IotWebConfHtmlFormatProvider::getBodyInner();
-  }
-  String getHead() override
-  {
-    return String(FPSTR(CUSTOMHTML_HEAD)) +
-           IotWebConfHtmlFormatProvider::getHead();
-  }
+  protected:
+    String getStyleInner() override
+    {
+      return
+        String(FPSTR(CUSTOMHTML_STYLE_INNER)) +
+        IotWebConfHtmlFormatProvider::getStyleInner();
+    }
+    String getScriptInner() override
+    {
+      return
+        IotWebConfHtmlFormatProvider::getScriptInner() +
+        String(FPSTR(CUSTOMHTML_SCRIPT_INNER));
+    }
+    String getBodyInner() override
+    {
+      return
+        String(FPSTR(CUSTOMHTML_BODY_INNER)) +
+        IotWebConfHtmlFormatProvider::getBodyInner();
+    }
+    String getHead() override
+    {
+      return
+        String(FPSTR(CUSTOMHTML_HEAD)) +
+        IotWebConfHtmlFormatProvider::getHead();
+    }
 
-  String getFormEnd() override
-  {
-    return String(FPSTR(CUSTOMHTML_FORM_END));
-  }
+    String getFormEnd() override
+    {
+      return
+        String(FPSTR(CUSTOMHTML_FORM_END));
+    }
+
+
 };
 // -- An instance must be created from the class defined above.
 CustomHtmlFormatProvider customHtmlFormatProvider;
@@ -518,14 +528,10 @@ void handleRoot()
 
 void setup()
 {
-
+ 
   ArduinoOTA.setPort(otaport);
   ArduinoOTA.setHostname(hostname);
 
-  iotWebConf.setConfigSavedCallback(&configSaved);
-  iotWebConf.setFormValidator(&formValidator);
-  iotWebConf.setApConnectionHandler(&connectAp);
-  iotWebConf.setWifiConnectionHandler(&connectWifi);
 
   ArduinoOTA.onStart([]() {
     String type;
@@ -541,41 +547,42 @@ void setup()
     // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
   });
   ArduinoOTA.onEnd([]() {
-    //serial.println("\nEnd");
+    Serial.println("\nEnd");
   });
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-    //serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
   });
   ArduinoOTA.onError([](ota_error_t error) {
-    //serial.printf("Error[%u]: ", error);
+    Serial.printf("Error[%u]: ", error);
     if (error == OTA_AUTH_ERROR)
     {
-      //serial.println("Auth Failed");
+      Serial.println("Auth Failed");
     }
     else if (error == OTA_BEGIN_ERROR)
     {
-      //serial.println("Begin Failed");
+      Serial.println("Begin Failed");
     }
     else if (error == OTA_CONNECT_ERROR)
     {
-      //serial.println("Connect Failed");
+      Serial.println("Connect Failed");
     }
     else if (error == OTA_RECEIVE_ERROR)
     {
-      //serial.println("Receive Failed");
+      Serial.println("Receive Failed");
     }
     else if (error == OTA_END_ERROR)
     {
-      //serial.println("End Failed");
+      Serial.println("End Failed");
     }
   });
   ArduinoOTA.begin();
 
   Udp.begin(localUdpPort);
 
-  //serial.begin(115200);
-  //serial.println();
-  //serial.println("Starting up...");
+  //Serial.begin(115200);
+  Serial.begin(115200, SERIAL_8N1, SERIAL_TX_ONLY, 1);
+  Serial.println();
+  Serial.println("Starting up...");
 
   // -- Applying the new HTML format to IotWebConf.
   iotWebConf.setHtmlFormatProvider(&customHtmlFormatProvider);
@@ -589,15 +596,15 @@ void setup()
     iotWebConf.handleNotFound();
   });
 
-  IotWebConfParameter *thingNameParam = iotWebConf.getThingNameParameter();
+  IotWebConfParameter* thingNameParam = iotWebConf.getThingNameParameter();
 
   thingNameParam->label = "LOXpixel! name";
 
-  IotWebConfParameter *apPasswordParam = iotWebConf.getApPasswordParameter();
+  IotWebConfParameter* apPasswordParam = iotWebConf.getApPasswordParameter();
 
   apPasswordParam->label = "LOXpixel! password";
 
-  IotWebConfParameter *wifiPasswordParam = iotWebConf.getWifiPasswordParameter();
+  IotWebConfParameter* wifiPasswordParam = iotWebConf.getWifiPasswordParameter();
 
   wifiPasswordParam->label = "WiFi password";
 
@@ -650,6 +657,14 @@ void setup()
 
   //iotWebConf.addParameter(&floatParam);
 
+
+  iotWebConf.setConfigSavedCallback(&configSaved);
+  iotWebConf.setFormValidator(&formValidator);
+  iotWebConf.setApConnectionHandler(&connectAp);
+  iotWebConf.setWifiConnectionHandler(&connectWifi);
+
+
+
   // -- Initializing the configuration.
 
   boolean validConfig = iotWebConf.init();
@@ -662,9 +677,10 @@ void setup()
     iotWebConf.handleNotFound();
   });
 
-  //serial.println("Ready.");
+  Serial.println("Ready.");
 
   FastLED.addLeds<WS2811, LED_PIN, GRB>(leds, atoi(intParamValue));
+  //FastLED.addLeds<WS2811, LED_PIN, GRB>(leds, 3);
 
   //Starthelligkeit auf 255
   // FastLED.setBrightness(255);
@@ -746,7 +762,7 @@ void effekte()
 
     break;
   case 1: //Rainbow
-          ////serial.println("Rainbow!");
+          //Serial.println("Rainbow!");
     rainbowCycle(20);
     break;
   case 2: //Rainbow with Glitter
@@ -923,19 +939,22 @@ CRGB colorTemperatureToRGB(int kelvin)
 void loop()
 {
 
+  // -- doLoop should be called as frequently as possible.
+  iotWebConf.doLoop();
+
   ArduinoOTA.handle();
 
   effekte();
 
-  ////serial.println("Loop..");
+  //Serial.println("Loop..");
   int packetSize = Udp.parsePacket();
   if (packetSize)
   {
 
     //UDP Paket lesen
     Udp.read(packetBuffer, UDP_TX_PACKET_MAX_SIZE);
-    //serial.println("Contents:");
-    //serial.println(packetBuffer);
+    Serial.println("Contents:");
+    Serial.println(packetBuffer);
 
     String hexstring = packetBuffer;
 
@@ -1021,8 +1040,8 @@ void loop()
       //effektNR = hexstring.charAt(1) - '0';
       hexstring.remove(0, 1);
       effektNR = hexstring.toInt();
-      //serial.println(" Effekt@!");
-      //serial.println(effektNR);
+      Serial.println(" Effekt@!");
+      Serial.println(effektNR);
     }
   }
 
@@ -1043,8 +1062,7 @@ void loop()
     nblendPaletteTowardPalette(currentPalette, targetPalette, 48);
   }
 
-  // -- doLoop should be called as frequently as possible.
-  iotWebConf.doLoop();
+  
 
   if (needreset)
   {
@@ -1280,7 +1298,7 @@ void ripple()
   {
     if (step < maxSteps)
     {
-      ////serial.println(pow(fadeRate,step));
+      //Serial.println(pow(fadeRate,step));
 
       leds[wrap(center + step)] = CHSV(color, 255, pow(fadeRate, step) * 255); //   strip.setPixelColor(wrap(center + step), Wheel(color, pow(fadeRate, step)));
       leds[wrap(center - step)] = CHSV(color, 255, pow(fadeRate, step) * 255); //   strip.setPixelColor(wrap(center - step), Wheel(color, pow(fadeRate, step)));
@@ -1489,7 +1507,7 @@ void CylonBounce(byte red, byte green, byte blue, int EyeSize, int SpeedDelay, i
 
 void configSaved()
 {
-  //serial.println("Configuration was updated.");
+  Serial.println("Configuration was updated.");
   needreset = true;
 }
 
@@ -1516,20 +1534,26 @@ boolean formValidator()
   return valid;
 }
 
-boolean connectAp(const char *apName, const char *password)
+boolean connectAp(const char* apName, const char* password)
 {
   // -- Custom AP settings
   return WiFi.softAP(apName, password, 4);
 }
-void connectWifi(const char *ssid, const char *password)
+
+void connectWifi(const char* ssid, const char* password)
 {
   ipAddress.fromString(String(ipAddressValue));
   netmask.fromString(String(netmaskValue));
   gateway.fromString(String(gatewayValue));
 
-  if (!WiFi.config(ipAddress, gateway, netmask))
-  {
+  if (!WiFi.config(ipAddress, gateway, netmask)) {
+    Serial.println("STA Failed to configure");
   }
-
+  Serial.print("ip: ");
+  Serial.println(ipAddress);
+  Serial.print("gw: ");
+  Serial.println(gateway);
+  Serial.print("net: ");
+  Serial.println(netmask);
   WiFi.begin(ssid, password);
 }
