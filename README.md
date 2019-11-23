@@ -15,9 +15,11 @@ Ich habe mit der Entwicklung im Rahmen meiner Smart-Home Planung für unseren Ne
  **( Arduino Versionsnummer 2.5.0 / PlattformIO Versionsnummer 2.0.4 )** 
  
 **Arduino:**
+
 ![enter image description here](https://unser-smartes-zuhause.de/wp-content/uploads/2019/11/2019-11-23-14_50_48-StackEdit-e1574517300840.png)
 
 **PlattformIO:**
+
 ![enter image description here](https://unser-smartes-zuhause.de/wp-content/uploads/2019/11/2019-11-23-14_51_45-PIO-Home-LOXpixel_Conf_PlattformIO-Kombiniert-Visual-Studio-Code.png)
 
  - Wenn nicht mein Fork der FastLED Bibliothek verwendet wird, muss eine Zeile in folgender Datei auskommentiert werden:
