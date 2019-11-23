@@ -9,6 +9,26 @@ Einige Zusatzinformationen können in unserem Bau und Smart-Home Blog nachgelese
 https://unser-smartes-zuhause.de/2019/10/20/loxpixel-rgbw-neopixel-integration-in-loxone/
 
 Ich habe mit der Entwicklung im Rahmen meiner Smart-Home Planung für unseren Neubau begonnen. Die Idee war Neopixel ähnliche LED Streifen mit meinem Loxone Miniserver zu verbinden. Und das alles möglichst einfach bedienbar.
+# Vor dem Kompilieren zu beachten!!!!!!
+
+ - Maximalen Versionsstand der ESP8266 Plattform beachten ! 
+ **( Arduino Versionsnummer 2.5.0 / PlattformIO Versionsnummer 2.0.4 )** 
+ 
+**Arduino:**
+![enter image description here](https://unser-smartes-zuhause.de/wp-content/uploads/2019/11/2019-11-23-14_50_48-StackEdit-e1574517300840.png)
+
+**PlattformIO:**
+![enter image description here](https://unser-smartes-zuhause.de/wp-content/uploads/2019/11/2019-11-23-14_51_45-PIO-Home-LOXpixel_Conf_PlattformIO-Kombiniert-Visual-Studio-Code.png)
+
+ - Wenn nicht mein Fork der FastLED Bibliothek verwendet wird, muss eine Zeile in folgender Datei auskommentiert werden:
+ 
+ **Arduino:**
+ **C:\USERS\Username\Documents\Arduino\libraries\FastLED-master\platforms\esp\8266\led_sysdefs_esp8266.h**
+ 
+     typedef uint8_t boolean;
+    zu
+    //typedef uint8_t boolean;
+
 ## Erster Start
 LOXpixel! erstellt bei dem ersten Start einen WLAN Accesspoint mit folgenden Daten:
 
