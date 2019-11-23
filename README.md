@@ -11,6 +11,8 @@ https://unser-smartes-zuhause.de/2019/10/20/loxpixel-rgbw-neopixel-integration-i
 Ich habe mit der Entwicklung im Rahmen meiner Smart-Home Planung für unseren Neubau begonnen. Die Idee war Neopixel ähnliche LED Streifen mit meinem Loxone Miniserver zu verbinden. Und das alles möglichst einfach bedienbar.
 # Vor dem Kompilieren zu beachten!!!!!!
 
+ - LED Chip Type und Datenpin lassen sich aktuell noch nicht über das Webinterface einstellen! Hierfür sind Anpassungen im Code notwendig
+ - Sofern der DMA Modus (#define FASTLED_ESP8266_DMA) verwendet wird, wird automatisch immer der **RX Pin** des Boards verwendet. Im Falle des NodeMCU ist das Pin3. Der Pin lässt sich im DMA Modus **nicht** anpassen!
  - Maximalen Versionsstand der ESP8266 Plattform beachten ! 
  **( Arduino Versionsnummer 2.5.0 / PlattformIO Versionsnummer 2.0.4 )** 
  
