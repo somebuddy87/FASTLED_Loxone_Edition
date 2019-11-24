@@ -1,5 +1,5 @@
 //////////////////////////////////////////////////////////
-//    LOXpixel! SK6812 Loxone Integration V0.2          //
+//    LOXpixel! SK6812 Loxone Integration V0.3          //
 //    Dennis Henning                                    //
 //    https://unser-smartes-zuhause.de                  //
 //    11/2019                                           //
