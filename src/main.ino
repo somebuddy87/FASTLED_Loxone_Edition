@@ -173,15 +173,15 @@ char stringParamValue[STRING_LEN];
 
 // For first Start!
 char intParamValue[NUMBER_LEN] = "300";
-char stripeTypeParamValue[NUMBER_LEN];
+char stripeTypeParamValue[NUMBER_LEN] = "1";
 //char datenpinParamValue[NUMBER_LEN];
 
-char brightnessParamValue[NUMBER_LEN];
+char brightnessParamValue[NUMBER_LEN] = "255";
 
 char floatParamValue[NUMBER_LEN];
 
-char start1Value[NUMBER_LEN];
-char length1Value[NUMBER_LEN];
+char start1Value[NUMBER_LEN] = "0";
+char length1Value[NUMBER_LEN] = "299";
 
 char start2Value[NUMBER_LEN];
 char length2Value[NUMBER_LEN];
