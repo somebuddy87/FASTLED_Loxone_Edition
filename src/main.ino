@@ -1,5 +1,5 @@
 //////////////////////////////////////////////////////////
-//    LOXpixel! SK6812 Loxone Integration V0.3          //
+//    LOXpixel! SK6812 Loxone Integration V0.2          //
 //    Dennis Henning                                    //
 //    https://unser-smartes-zuhause.de                  //
 //    11/2019                                           //
@@ -29,6 +29,7 @@
 
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
+#include <EEPROM.h>
 
 //Grundeinstellungen
 
@@ -38,6 +39,10 @@
 //LED Pin
 //Solange FASTLED_ESP8266_DMA aktiviert ist, wird als LED PIN immer der RX Pin des Node MCU verwendet
 #define LED_PIN 3
+
+#define CLOCK_PIN 13
+
+#define EEPROM_SIZE 4096
 
 //Port fuer Arduino OTA
 int otaport = 8266;
@@ -94,6 +99,25 @@ byte dothue = 0;
 
 // Einstellungen ENDE
 
+#define PRESSED LOW
+#define NOT_PRESSED HIGH
+  
+const unsigned long shortPress = 100;
+const unsigned long  longPress = 3000;
+
+ 
+typedef struct Buttons {
+   
+    const int debounce = 30;
+    unsigned long counter=0;
+    bool prevState = NOT_PRESSED;
+    bool currentState;
+} Button;
+ 
+// create a Button variable type
+Button button;
+
+
 WiFiUDP Udp;
 
 char packetBuffer[UDP_TX_PACKET_MAX_SIZE];
@@ -106,10 +130,10 @@ CRGBPalette16 currentPalette(CRGB::Black);
 CRGBPalette16 targetPalette(OceanColors_p);
 
 // -- Initial name of the Thing. Used e.g. as SSID of the own Access Point.
-const char thingName[] = "LOXpixel!";
+const char thingName[] = "LOXpixel";
 
 //Hostname fuer Arduino OTA
-const char* hostname = thingName;
+const char* hostname = thingName;  
 
 // -- Initial password to connect to the Thing, when it creates an own Access Point.
 const char wifiInitialApPassword[] = "loxpixel";
@@ -118,16 +142,17 @@ const char wifiInitialApPassword[] = "loxpixel";
 #define NUMBER_LEN 32
 
 // -- Configuration specific key. The value should be modified if config structure was changed.
-#define CONFIG_VERSION "Lox0815"
+#define CONFIG_VERSION "0815"
 
 // -- When CONFIG_PIN is pulled to ground on startup, the Thing will use the initial
 //      password to buld an AP. (E.g. in case of lost password)
-#define CONFIG_PIN 2
+#define CONFIG_PIN 8
 
 // -- Status indicator pin.
 //      First it will light up (kept LOW), on Wifi connection it will blink,
 //      when connected to the Wifi it will turn off (kept HIGH).
-#define STATUS_PIN LED_BUILTIN
+#define STATUS_PIN 12
+
 
 // -- Callback method declarations.
 void configSaved();
@@ -137,7 +162,9 @@ void connectWifi(const char* ssid, const char* password);
 
 DNSServer dnsServer;
 WebServer server(80);
+HTTPUpdateServer httpUpdater;
 
+char dhcpParamValue[NUMBER_LEN] = "1";
 char ipAddressValue[STRING_LEN];
 char gatewayValue[STRING_LEN];
 char netmaskValue[STRING_LEN];
@@ -145,9 +172,9 @@ char netmaskValue[STRING_LEN];
 char stringParamValue[STRING_LEN];
 
 // For first Start!
-char intParamValue[NUMBER_LEN] = "300" ;
+char intParamValue[NUMBER_LEN] = "300";
 char stripeTypeParamValue[NUMBER_LEN];
-char datenpinParamValue[NUMBER_LEN];
+//char datenpinParamValue[NUMBER_LEN];
 
 char brightnessParamValue[NUMBER_LEN];
 
@@ -179,15 +206,16 @@ char length8Value[NUMBER_LEN];
 
 IotWebConf iotWebConf(thingName, &dnsServer, &server, wifiInitialApPassword, CONFIG_VERSION);
 IotWebConfSeparator separator0 = IotWebConfSeparator("Basic Settings");
+IotWebConfParameter dhcpParam = IotWebConfParameter("DHCP Mode (0=Off / 1=On)", "dhcpParam", dhcpParamValue, NUMBER_LEN, "number", "1", NULL, "min='0' max='1' step='1'");
 IotWebConfParameter ipAddressParam = IotWebConfParameter("IP address", "ipAddress", ipAddressValue, STRING_LEN, "text", "192.168.3.222", "192.168.3.222");
 IotWebConfParameter gatewayParam = IotWebConfParameter("Gateway", "gateway", gatewayValue, STRING_LEN, "text", "192.168.3.1", "192.168.3.0");
 IotWebConfParameter netmaskParam = IotWebConfParameter("Subnet mask", "netmask", netmaskValue, STRING_LEN, "text", "255.255.255.0", "255.255.255.0");
 
-IotWebConfParameter stripeTypeParam = IotWebConfParameter("Stripe type (0=SK6812 / 1=WS2812 / 2=WS2801) (Disabled! Stripe Type has to be set in code actually)", "stripeTypeParam", stripeTypeParamValue, NUMBER_LEN, "number", "0", NULL, "min='0' max='5' step='1'");
+IotWebConfParameter stripeTypeParam = IotWebConfParameter("Stripe type (0=SK6812 / 1=WS2812 / 2=WS2801) [The device must be restarted!]", "stripeTypeParam", stripeTypeParamValue, NUMBER_LEN, "number", "0", NULL, "min='0' max='2' step='1'");
 
 IotWebConfSeparator separator1 = IotWebConfSeparator("Network Settings");
 IotWebConfParameter intParam = IotWebConfParameter("Number of LEDs", "intParam", intParamValue, NUMBER_LEN, "number", "300", NULL, "min='1' max='2000' step='1'");
-IotWebConfParameter datenpinParam = IotWebConfParameter("Data PIN (Disabled! Data pin has to be set in code actually)", "datenpinParam", datenpinParamValue, NUMBER_LEN, "number", "3", NULL, "min='1' max='50' step='1'");
+//IotWebConfParameter datenpinParam = IotWebConfParameter("Data PIN (Disabled! Data pin has to be set in code actually)", "datenpinParam", datenpinParamValue, NUMBER_LEN, "number", "3", NULL, "min='1' max='50' step='1'");
 IotWebConfParameter brightnessParam = IotWebConfParameter("Brightness (1-255)", "brightnessParam", brightnessParamValue, NUMBER_LEN, "number", "255", NULL, "min='1' max='255' step='1'");
 
 // -- We can add a legend to the separator
@@ -309,32 +337,203 @@ void handleRoot()
     return;
   }
   String s = "<!DOCTYPE html><html lang=\"en\"><head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, user-scalable=no\"/>";
+  int dhcp = atoi(dhcpParamValue);
+  int stripeType = atoi(stripeTypeParamValue);
 
   s += FPSTR(CUSTOMHTML_BODY_INNER);
   s += "<title>LOXpixel! Status</title> <style>";
   s += FPSTR(CUSTOMHTML_STYLE_INNER);
   s += "</style></head><body>";
-  s += "<ul>";
-  s += "<li>IP address: ";
-  s += ipAddressValue;
-  s += "<li>Subnet mask: ";
-  s += netmaskValue;
-  s += "<li>Gateway: ";
-  s += gatewayValue;
-  s += "</ul>";
 
-  s += "<ul>";
-  s += "<li>Stripe type (0=SK6812 / 1=WS2812 / 2=WS2801): ";
-  s += atoi(stripeTypeParamValue);
+  s += "<h1>Current configuration</h1>";
+
+  s += "<h2>Network</h2>";
+  s += "<table>";
+  if (iotWebConf.getState() != IOTWEBCONF_STATE_ONLINE) {
+    s += "<tr>";
+    s += "<td><b>IP address:</b></td>";
+    s += "<td>192.168.4.1</td>";
+    s += "</tr>";
+  } else {
+    s += "<tr>";
+    s += "<td><b>DHCP:</b></td>";
+    if (dhcp == 1) {
+      s += "<td>On (1)</td>";
+    } else {
+      s += "<td>Off / Static (";
+      s += dhcp;
+      s += ")";
+      s += "</td>";
+    }
+    s += "</tr>";
+    s += "<tr>";
+    s += "<td><b>IP address:</b></td>";
+    s += "<td>";
+    s += WiFi.localIP().toString();
+    //s += ipAddressValue;
+    s += "</td>";
+    s += "</tr>";
+    s += "<tr>";
+    s += "<td><b>Subnetmask:</b></td>";
+    s += "<td>";
+    s += WiFi.subnetMask().toString();
+    //s += netmaskValue;
+    s += "</td>";
+    s += "</tr>";
+    s += "<tr>";
+    s += "<td><b>Gateway:</b></td>";
+    s += "<td>";
+    s += WiFi.gatewayIP().toString();
+    //s += gatewayValue;
+    s += "</td>";
+    s += "</tr>";
+  }
+  s += "</table>";
+
+
+
+  /*s += "<ul>";
+  if (dhcp == 1) {
+    s += "<li>DHCP: On (1)";
+  } else {
+    s += "<li>DHCP: Off/Static (";
+    s += dhcp;
+    s += ")";
+    s += "<li>IP address: ";
+    s += ipAddressValue;
+    s += "<li>Subnet mask: ";
+    s += netmaskValue;
+    s += "<li>Gateway: ";
+    s += gatewayValue;
+  }
+  s += "</ul>";*/
+
+  s += "</br>";
+  s += "</br>";
+
+  s += "<h2>Stripe</h2>";
+  s += "<table>";
+  s += "<tr>";
+  s += "<td><b>Stripe type:</b></td>";
+  if (stripeType == 0) {
+    s += "<td>SK6812 (0)</td>";
+  } else if (stripeType == 1) {
+    s += "<td>WS2812 (1)</td>";
+  } else if (stripeType == 2) {
+    s += "<td>WS2801 (2)</td>";
+  } else {
+    s += "<td>UNKNOWN (";
+    s += stripeType;
+    s += ")";
+    s += "</td>";
+  }
+  s += "</tr>";
+  s += "<tr>";
+  s += "<td><b>Number Of LEDs:</b></td>";
+  s += "<td>";
+  s += atoi(intParamValue);
+  s += "</td>";
+  s += "</tr>";
+  s += "<tr>";
+  s += "<td><b>Brightness:</b></td>";
+  s += "<td>";
+  s += atoi(brightnessParamValue);
+  s += "</td>";
+  s += "</tr>";
+  s += "</table>";
+
+  s += "</br>";
+  s += "</br>";
+
+  s += "<table>";
+  s += "<tr>";
+  s += "<th>LED Part: </th>";
+  s += "<th align=\"left\" width=30>1</th>";
+  s += "<th align=\"left\" width=30>2</th>";
+  s += "<th align=\"left\" width=30>3</th>";
+  s += "<th align=\"left\" width=30>4</th>";
+  s += "<th align=\"left\" width=30>5</th>";
+  s += "<th align=\"left\" width=30>6</th>";
+  s += "<th align=\"left\" width=30>7</th>";
+  s += "<th align=\"left\" width=30>8</th>";
+  s += "</tr>";
+  s += "<tr>";
+  s += "<td><b>Start:</b></td>";
+  s += "<td>";
+  s += atoi(start1Value);
+  s += "</td>";
+  s += "<td>";
+  s += atoi(start2Value);
+  s += "</td>";
+  s += "<td>";
+  s += atoi(start3Value);
+  s += "</td>";
+  s += "<td>";
+  s += atoi(start4Value);
+  s += "</td>";
+  s += "<td>";
+  s += atoi(start5Value);
+  s += "</td>";
+  s += "<td>";
+  s += atoi(start6Value);
+  s += "</td>";
+  s += "<td>";
+  s += atoi(start7Value);
+  s += "</td>";
+  s += "<td>";
+  s += atoi(start8Value);
+  s += "</td>";
+  s += "</tr>";
+  s += "<tr>";
+  s += "<td><b>Length:</b></td>";
+  s += "<td>";
+  s += atoi(length1Value);
+  s += "</td>";
+  s += "<td>";
+  s += atoi(length2Value);
+  s += "</td>";
+  s += "<td>";
+  s += atoi(length3Value);
+  s += "</td>";
+  s += "<td>";
+  s += atoi(length4Value);
+  s += "</td>";
+  s += "<td>";
+  s += atoi(length5Value);
+  s += "</td>";
+  s += "<td>";
+  s += atoi(length6Value);
+  s += "</td>";
+  s += "<td>";
+  s += atoi(length7Value);
+  s += "</td>";
+  s += "<td>";
+  s += atoi(length8Value);
+  s += "</td>";
+  s += "</tr>";
+  s += "</table>";
+
+  /*s += "<ul>";
+  if (stripeType == 0) {
+    s += "<li>Stripe type: SK6812 (0)";
+  } else if (stripeType == 1) {
+    s += "<li>Stripe type: WS2812 (1)";
+  } else if (stripeType == 2) {
+    s += "<li>Stripe type: WS2801 (2)";
+  } else {
+    s += "<li>Stripe type: UNKNOWN (";
+    s += stripeType;
+    s += ")";
+  }
   s += "<li>Number of LEDs: ";
   s += atoi(intParamValue);
   s += "<li>Brightness: ";
   s += atoi(brightnessParamValue);
-  s += "<li>Data PIN: ";
-  s += atoi(datenpinParamValue);
-  s += "</ul>";
+ // s += "<li>Data PIN: ";
+ // s += atoi(datenpinParamValue);
+  s += "</ul>";*/
 
-  s += "<table>";
+  /*s += "<table>";
   s += "<tr>";
   s += "<th>LED Part 1</th>";
   s += "<th>Value</th>";
@@ -515,10 +714,13 @@ void handleRoot()
   s += "</td>";
   s += "</tr>";
 
-  s += "</table>";
+  s += "</table>";*/
+
+  s += "</br>";
+  s += "</br>";
 
   s += "<form action='config'>";
-  s += "  <input type='submit' value='go to configuration page' />";
+  s += "  <input type='submit' value='configure' />";
   s += "</form>";
 
   s += "</body></html>\n";
@@ -529,9 +731,10 @@ void handleRoot()
 void setup()
 {
  
+  pinMode(STATUS_PIN,OUTPUT);
+
   ArduinoOTA.setPort(otaport);
   ArduinoOTA.setHostname(hostname);
-
 
   ArduinoOTA.onStart([]() {
     String type;
@@ -579,48 +782,74 @@ void setup()
 
   Udp.begin(localUdpPort);
 
-  //Serial.begin(115200);
-  Serial.begin(115200, SERIAL_8N1, SERIAL_TX_ONLY, 1);
+  Serial.begin(115200);
   Serial.println();
   Serial.println("Starting up...");
+  
+  // check Reset
+  Serial.println("Check reset... ");
+  uint16_t write = random(100);
+  Serial.print(write);
+  delay(10);
+  if(Serial.available()) {
+    uint16_t read = Serial.parseInt();
+    if (read == write) {
+      iotWebConf.resetWifiAuthInfo();
+      EEPROM.begin(EEPROM_SIZE);
+      for (int i = 0 ; i < EEPROM_SIZE ; i++) {
+        EEPROM.write(i, 0);
+      }
+      EEPROM.commit();
+      EEPROM.end();
+
+      for (int i=0; i<5; i++) {
+        digitalWrite(STATUS_PIN, HIGH);
+        delay(2000);
+        digitalWrite(STATUS_PIN, LOW);
+        delay(2000);
+      }
+    }
+  }
+  Serial.println();
+  
+  iotWebConf.setStatusPin(STATUS_PIN);
+  //iotWebConf.setConfigPin(CONFIG_PIN);
+  iotWebConf.setupUpdateServer(&httpUpdater);
 
   // -- Applying the new HTML format to IotWebConf.
   iotWebConf.setHtmlFormatProvider(&customHtmlFormatProvider);
   //iotWebConf.configSave();
-  iotWebConf.init();
+  //iotWebConf.setConfigPin(0);
+  //iotWebConf.init();
 
   // -- Set up required URL handlers on the web server.
-  server.on("/", handleRoot);
+  /*server.on("/", handleRoot); 
   server.on("/config", [] { iotWebConf.handleConfig(); });
   server.onNotFound([]() {
     iotWebConf.handleNotFound();
-  });
+  });*/
 
   IotWebConfParameter* thingNameParam = iotWebConf.getThingNameParameter();
-
   thingNameParam->label = "LOXpixel! name";
 
   IotWebConfParameter* apPasswordParam = iotWebConf.getApPasswordParameter();
-
   apPasswordParam->label = "LOXpixel! password";
 
   IotWebConfParameter* wifiPasswordParam = iotWebConf.getWifiPasswordParameter();
-
   wifiPasswordParam->label = "WiFi password";
 
   iotWebConf.addParameter(&separator1);
-
+  
+  iotWebConf.addParameter(&dhcpParam);
   iotWebConf.addParameter(&ipAddressParam);
   iotWebConf.addParameter(&gatewayParam);
   iotWebConf.addParameter(&netmaskParam);
 
   iotWebConf.addParameter(&separator0);
-  iotWebConf.setStatusPin(STATUS_PIN);
-  iotWebConf.setConfigPin(CONFIG_PIN);
-
+  
   iotWebConf.addParameter(&stripeTypeParam);
   iotWebConf.addParameter(&intParam);
-  iotWebConf.addParameter(&datenpinParam);
+  //iotWebConf.addParameter(&datenpinParam);
   iotWebConf.addParameter(&brightnessParam);
 
   iotWebConf.addParameter(&separator2);
@@ -657,17 +886,13 @@ void setup()
 
   //iotWebConf.addParameter(&floatParam);
 
-
   iotWebConf.setConfigSavedCallback(&configSaved);
   iotWebConf.setFormValidator(&formValidator);
   iotWebConf.setApConnectionHandler(&connectAp);
   iotWebConf.setWifiConnectionHandler(&connectWifi);
 
-
-
   // -- Initializing the configuration.
-
-  boolean validConfig = iotWebConf.init();
+  iotWebConf.init(); // boolean validConfig = 
 
   // -- Set up required URL handlers on the web server.
   server.on("/", handleRoot);
@@ -679,11 +904,20 @@ void setup()
 
   Serial.println("Ready.");
 
-  FastLED.addLeds<WS2811, LED_PIN, GRB>(leds, atoi(intParamValue));
-  //FastLED.addLeds<WS2811, LED_PIN, GRB>(leds, 3);
+  int stripeType = atoi(stripeTypeParamValue);
+  if (stripeType == 0) { // SK6812
+    FastLED.addLeds<SK6812, LED_PIN, GRB>(leds, atoi(intParamValue));
+    Serial.println("Use SK6812 (0)");
+  } else if (stripeType == 1) { // WS2812
+    FastLED.addLeds<WS2811, LED_PIN, GRB>(leds, atoi(intParamValue));
+    Serial.println("Use WS2811 (1)");
+  } else if (stripeType == 2) { // WS2801
+    FastLED.addLeds<WS2801, LED_PIN, CLOCK_PIN, RGB>(leds, atoi(intParamValue));
+    Serial.println("Use WS2801 (2)");
+  } else {
+    Serial.println("wrong stripe type?");
+  }
 
-  //Starthelligkeit auf 255
-  // FastLED.setBrightness(255);
   FastLED.setBrightness(atoi(brightnessParamValue));
 }
 
@@ -860,19 +1094,27 @@ CRGB parseLoxone(String loxonestring)
   { // LUMITECH
 
     float bri, ct;
-    int briNorm, miredNorm;
+    //int briNorm, miredNorm;
 
     bri = floor((value - 200000000) / 10000);        // 0-100
     ct = floor((value - 200000000) - (bri * 10000)); // Wert in Kelvin, von 2700 - 6500
 
-    briNorm = (int)round(bri * 2.55);     // 0-255
-    miredNorm = (int)round(1000000 / ct); // Wert von 154 - 370
+    //briNorm = (int)round(bri * 2.55);     // 0-255
+    //miredNorm = (int)round(1000000 / ct); // Wert von 154 - 370
 
     ctrgbvalue = colorTemperatureToRGB(ct);
 
     rgbvalue.red = ctrgbvalue.red;
     rgbvalue.green = ctrgbvalue.green;
     rgbvalue.blue = ctrgbvalue.blue;
+
+    if (bri == 0)
+    {
+      rgbvalue.red = 0;
+      rgbvalue.green =0;
+      rgbvalue.blue = 0;
+    }
+
   }
   return rgbvalue;
 }
@@ -936,11 +1178,71 @@ CRGB colorTemperatureToRGB(int kelvin)
   return rgbvalue;
 }
 
+void handleShortPress() {
+
+}
+ 
+void handleLongPress() {
+
+     //iotWebConf.setConfigPin(0);
+   // iotWebConf.init();
+
+    digitalWrite(D6, HIGH);
+    delay(2000);
+        digitalWrite(D6, LOW);
+    delay(2000);
+        digitalWrite(D6, HIGH);
+    delay(2000);
+        digitalWrite(D6, LOW);
+    delay(2000); 
+    iotWebConf.resetWifiAuthInfo();
+   
+}
+
+
 void loop()
 {
 
+
+ // check the button
+    button.currentState = digitalRead(0);
+ 
+    // has it changed?
+    if (button.currentState != button.prevState) {
+        delay(button.debounce);
+        // update status in case of bounce
+        button.currentState = digitalRead(0);
+        if (button.currentState == PRESSED) {
+            // a new press event occured
+            // record when button went down
+            button.counter = millis();
+        }
+ 
+        if (button.currentState == NOT_PRESSED) {
+            // but no longer pressed, how long was it down?
+            unsigned long currentMillis = millis();
+            //if ((currentMillis - button.counter >= shortPress) && !(currentMillis - button.counter >= longPress)) {
+            if ((currentMillis - button.counter >= shortPress) && !(currentMillis - button.counter >= longPress)) {
+                // short press detected. 
+                handleShortPress();
+                 Serial.println("shortpress!");
+            }
+            if ((currentMillis - button.counter >= longPress)) {
+                // the long press was detected
+                handleLongPress();
+                Serial.println("longpress!");
+            }
+        }
+        // used to detect when state changes
+        button.prevState = button.currentState;
+    } 
+
+
+ 
   // -- doLoop should be called as frequently as possible.
   iotWebConf.doLoop();
+
+
 
   ArduinoOTA.handle();
 
@@ -1369,7 +1671,7 @@ int rainbow_j = 0;
 void rainbowCycle(int SpeedDelay)
 {
   byte *c;
-  uint16_t i, j;
+  uint16_t i; // , j
 
   // for(j=0; j<256*5; j++) { // 5 cycles of all colors on wheel
   for (i = 0; i < NUM_LEDS; i++)
@@ -1513,23 +1815,27 @@ void configSaved()
 
 boolean formValidator()
 {
-
   boolean valid = true;
 
-  if (!ipAddress.fromString(server.arg(ipAddressParam.getId())))
-  {
-    ipAddressParam.errorMessage = "Please provide a correct ip address!";
-    valid = false;
-  }
-  if (!netmask.fromString(server.arg(netmaskParam.getId())))
-  {
-    netmaskParam.errorMessage = "Please provide a correct subnet mask!";
-    valid = false;
-  }
-  if (!gateway.fromString(server.arg(gatewayParam.getId())))
-  {
-    gatewayParam.errorMessage = "Please provide a correct gateway ip address!";
-    valid = false;
+  int dhcp = atoi(dhcpParamValue);
+  Serial.print("dhcp: ?");
+  Serial.println(dhcp);
+  if (dhcp != 1) {
+    if (!ipAddress.fromString(server.arg(ipAddressParam.getId())))
+    {
+      ipAddressParam.errorMessage = "Please provide a correct ip address!";
+      valid = false;
+    }
+    if (!netmask.fromString(server.arg(netmaskParam.getId())))
+    {
+      netmaskParam.errorMessage = "Please provide a correct subnet mask!";
+      valid = false;
+    }
+    if (!gateway.fromString(server.arg(gatewayParam.getId())))
+    {
+      gatewayParam.errorMessage = "Please provide a correct gateway ip address!";
+      valid = false;
+    }
   }
   return valid;
 }
@@ -1542,18 +1848,37 @@ boolean connectAp(const char* apName, const char* password)
 
 void connectWifi(const char* ssid, const char* password)
 {
-  ipAddress.fromString(String(ipAddressValue));
-  netmask.fromString(String(netmaskValue));
-  gateway.fromString(String(gatewayValue));
+  Serial.println("connect wifi");
+  WiFi.hostname(hostname);
+  int dhcp = atoi(dhcpParamValue);
+  Serial.print("DHCP: ");
+  Serial.println(dhcp);
+  if ( (dhcp != 1) && (strlen(ipAddressValue) > 0) && (strlen(netmaskValue) > 0) && (strlen(gatewayValue) > 0 )) {
+    ipAddress.fromString(String(ipAddressValue));
+    netmask.fromString(String(netmaskValue));
+    gateway.fromString(String(gatewayValue));
 
-  if (!WiFi.config(ipAddress, gateway, netmask)) {
-    Serial.println("STA Failed to configure");
+    if (!WiFi.config(ipAddress, gateway, netmask)) {
+      Serial.println("STA Failed to configure");
+    }
+
+    Serial.println("Static ip configuration:");
+    Serial.print("ip: ");
+    Serial.println(ipAddress);
+    Serial.print("gw: ");
+    Serial.println(gateway);
+    Serial.print("net: ");
+    Serial.println(netmask);
   }
-  Serial.print("ip: ");
-  Serial.println(ipAddress);
-  Serial.print("gw: ");
-  Serial.println(gateway);
-  Serial.print("net: ");
-  Serial.println(netmask);
+    
   WiFi.begin(ssid, password);
+
+  Serial.print("Connecting");
+  while (WiFi.status() != WL_CONNECTED) {
+    Serial.print(".");
+    delay(500);
+  }
+  Serial.println();
+  Serial.print("Connected, IP address: ");
+  Serial.println(WiFi.localIP());
 }
