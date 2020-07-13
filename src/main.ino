@@ -173,15 +173,15 @@ char stringParamValue[STRING_LEN];
 
 // For first Start!
 char intParamValue[NUMBER_LEN] = "300";
-char stripeTypeParamValue[NUMBER_LEN];
+char stripeTypeParamValue[NUMBER_LEN] = "1";
 //char datenpinParamValue[NUMBER_LEN];
 
-char brightnessParamValue[NUMBER_LEN];
+char brightnessParamValue[NUMBER_LEN] = "255";
 
 char floatParamValue[NUMBER_LEN];
 
-char start1Value[NUMBER_LEN];
-char length1Value[NUMBER_LEN];
+char start1Value[NUMBER_LEN] = "0";
+char length1Value[NUMBER_LEN] = "299";
 
 char start2Value[NUMBER_LEN];
 char length2Value[NUMBER_LEN];
@@ -909,8 +909,8 @@ void setup()
     FastLED.addLeds<SK6812, LED_PIN, GRB>(leds, atoi(intParamValue));
     Serial.println("Use SK6812 (0)");
   } else if (stripeType == 1) { // WS2812
-    FastLED.addLeds<WS2811, LED_PIN, GRB>(leds, atoi(intParamValue));
-    Serial.println("Use WS2811 (1)");
+    FastLED.addLeds<WS2812, LED_PIN, GRB>(leds, atoi(intParamValue));
+    Serial.println("Use WS2812 (1)");
   } else if (stripeType == 2) { // WS2801
     FastLED.addLeds<WS2801, LED_PIN, CLOCK_PIN, RGB>(leds, atoi(intParamValue));
     Serial.println("Use WS2801 (2)");
