@@ -17,6 +17,14 @@
 
 #include <Arduino.h>
 #include <IotWebConf.h>
+#include <IotWebConfUsing.h>
+
+// Include Update server
+#ifdef ESP8266
+# include <ESP8266HTTPUpdateServer.h>
+#elif defined(ESP32)
+# include <IotWebConfESP32HTTPUpdateServer.h>
+#endif
 
 //RGBW Implementierung aktivieren
 #define FASTLED_RGBW
@@ -156,13 +164,18 @@ const char wifiInitialApPassword[] = "loxpixel";
 
 // -- Callback method declarations.
 void configSaved();
-boolean formValidator();
+boolean formValidator(iotwebconf::WebRequestWrapper* webRequestWrapper);
 boolean connectAp(const char* apName, const char* password);
 void connectWifi(const char* ssid, const char* password);
 
 DNSServer dnsServer;
 WebServer server(80);
+// Create Update Server
+#ifdef ESP8266
+ESP8266HTTPUpdateServer httpUpdater;
+#elif defined(ESP32)
 HTTPUpdateServer httpUpdater;
+#endif
 
 char dhcpParamValue[NUMBER_LEN] = "1";
 char ipAddressValue[STRING_LEN];
@@ -205,61 +218,62 @@ char start8Value[NUMBER_LEN];
 char length8Value[NUMBER_LEN];
 
 IotWebConf iotWebConf(thingName, &dnsServer, &server, wifiInitialApPassword, CONFIG_VERSION);
-IotWebConfSeparator separator0 = IotWebConfSeparator("Basic Settings");
-IotWebConfParameter dhcpParam = IotWebConfParameter("DHCP Mode (0=Off / 1=On)", "dhcpParam", dhcpParamValue, NUMBER_LEN, "number", "1", NULL, "min='0' max='1' step='1'");
-IotWebConfParameter ipAddressParam = IotWebConfParameter("IP address", "ipAddress", ipAddressValue, STRING_LEN, "text", "192.168.3.222", "192.168.3.222");
-IotWebConfParameter gatewayParam = IotWebConfParameter("Gateway", "gateway", gatewayValue, STRING_LEN, "text", "192.168.3.1", "192.168.3.0");
-IotWebConfParameter netmaskParam = IotWebConfParameter("Subnet mask", "netmask", netmaskValue, STRING_LEN, "text", "255.255.255.0", "255.255.255.0");
+iotwebconf::ParameterGroup group0 = iotwebconf::ParameterGroup("Basic Settings");
+iotwebconf::NumberParameter dhcpParam = iotwebconf::NumberParameter("DHCP Mode (0=Off / 1=On)", "dhcpParam", dhcpParamValue, NUMBER_LEN, "1", NULL, "min='0' max='1' step='1'");
 
-IotWebConfParameter stripeTypeParam = IotWebConfParameter("Stripe type (0=SK6812 / 1=WS2812 / 2=WS2801) [The device must be restarted!]", "stripeTypeParam", stripeTypeParamValue, NUMBER_LEN, "number", "0", NULL, "min='0' max='2' step='1'");
+iotwebconf::TextParameter ipAddressParam = iotwebconf::TextParameter("IP address", "ipAddress", ipAddressValue, STRING_LEN, "text", "192.168.3.222", "192.168.3.222");
+iotwebconf::TextParameter gatewayParam = iotwebconf::TextParameter("Gateway", "gateway", gatewayValue, STRING_LEN, "text", "192.168.3.1", "192.168.3.0");
+iotwebconf::TextParameter netmaskParam = iotwebconf::TextParameter("Subnet mask", "netmask", netmaskValue, STRING_LEN, "text", "255.255.255.0", "255.255.255.0");
 
-IotWebConfSeparator separator1 = IotWebConfSeparator("Network Settings");
-IotWebConfParameter intParam = IotWebConfParameter("Number of LEDs", "intParam", intParamValue, NUMBER_LEN, "number", "300", NULL, "min='1' max='2000' step='1'");
-//IotWebConfParameter datenpinParam = IotWebConfParameter("Data PIN (Disabled! Data pin has to be set in code actually)", "datenpinParam", datenpinParamValue, NUMBER_LEN, "number", "3", NULL, "min='1' max='50' step='1'");
-IotWebConfParameter brightnessParam = IotWebConfParameter("Brightness (1-255)", "brightnessParam", brightnessParamValue, NUMBER_LEN, "number", "255", NULL, "min='1' max='255' step='1'");
+iotwebconf::NumberParameter stripeTypeParam = iotwebconf::NumberParameter("Stripe type (0=SK6812 / 1=WS2812 / 2=WS2801) [The device must be restarted!]", "stripeTypeParam", stripeTypeParamValue, NUMBER_LEN, "0", NULL, "min='0' max='2' step='1'");
 
-// -- We can add a legend to the separator
-IotWebConfSeparator separator2 = IotWebConfSeparator("LED Part 1");
+iotwebconf::ParameterGroup group1 = iotwebconf::ParameterGroup("Network Settings");
+iotwebconf::NumberParameter intParam = iotwebconf::NumberParameter("Number of LEDs", "intParam", intParamValue, NUMBER_LEN, "300", NULL, "min='1' max='2000' step='1'");
+//iotwebconf::NumberParameter datenpinParam = iotwebconf::NumberParameter("Data PIN (Disabled! Data pin has to be set in code actually)", "datenpinParam", datenpinParamValue, NUMBER_LEN, "number", "3", NULL, "min='1' max='50' step='1'");
+iotwebconf::NumberParameter brightnessParam = iotwebconf::NumberParameter("Brightness (1-255)", "brightnessParam", brightnessParamValue, NUMBER_LEN, "255", NULL, "min='1' max='255' step='1'");
 
-IotWebConfParameter start1 = IotWebConfParameter("Start Part 1", "start1", start1Value, NUMBER_LEN, "number", "0", NULL, "min='0' max='2000' step='1'");
-IotWebConfParameter length1 = IotWebConfParameter("Length Part 1", "length1", length1Value, NUMBER_LEN, "number", "0", NULL, "min='0' max='2000' step='1'");
+// -- We can add a legend to the groups (formerly called Separators)
+iotwebconf::ParameterGroup group2 = iotwebconf::ParameterGroup("LED Part 1");
 
-IotWebConfSeparator separator3 = IotWebConfSeparator("LED Part 2");
+iotwebconf::NumberParameter start1 = iotwebconf::NumberParameter("Start Part 1", "start1", start1Value, NUMBER_LEN, "0", NULL, "min='0' max='2000' step='1'");
+iotwebconf::NumberParameter length1 = iotwebconf::NumberParameter("Length Part 1", "length1", length1Value, NUMBER_LEN, "0", NULL, "min='0' max='2000' step='1'");
 
-IotWebConfParameter start2 = IotWebConfParameter("Start Part 2", "start2", start2Value, NUMBER_LEN, "number", "0", NULL, "min='0' max='2000' step='1'");
-IotWebConfParameter length2 = IotWebConfParameter("Length Part 2", "length2", length2Value, NUMBER_LEN, "number", "0", NULL, "min='0' max='2000' step='1'");
+iotwebconf::ParameterGroup group3 = iotwebconf::ParameterGroup("LED Part 2");
 
-IotWebConfSeparator separator4 = IotWebConfSeparator("LED Part 3");
+iotwebconf::NumberParameter start2 = iotwebconf::NumberParameter("Start Part 2", "start2", start2Value, NUMBER_LEN, "0", NULL, "min='0' max='2000' step='1'");
+iotwebconf::NumberParameter length2 = iotwebconf::NumberParameter("Length Part 2", "length2", length2Value, NUMBER_LEN, "0", NULL, "min='0' max='2000' step='1'");
 
-IotWebConfParameter start3 = IotWebConfParameter("Start Part 3", "start3", start3Value, NUMBER_LEN, "number", "0", NULL, "min='0' max='2000' step='1'");
-IotWebConfParameter length3 = IotWebConfParameter("Length Part 3", "length3", length3Value, NUMBER_LEN, "number", "0", NULL, "min='0' max='2000' step='1'");
+iotwebconf::ParameterGroup group4 = iotwebconf::ParameterGroup("LED Part 3");
 
-IotWebConfSeparator separator5 = IotWebConfSeparator("LED Part 4");
+iotwebconf::NumberParameter start3 = iotwebconf::NumberParameter("Start Part 3", "start3", start3Value, NUMBER_LEN, "0", NULL, "min='0' max='2000' step='1'");
+iotwebconf::NumberParameter length3 = iotwebconf::NumberParameter("Length Part 3", "length3", length3Value, NUMBER_LEN, "0", NULL, "min='0' max='2000' step='1'");
 
-IotWebConfParameter start4 = IotWebConfParameter("Start Part 4", "start4", start4Value, NUMBER_LEN, "number", "0", NULL, "min='0' max='2000' step='1'");
-IotWebConfParameter length4 = IotWebConfParameter("Length Part 4", "length4", length4Value, NUMBER_LEN, "number", "0", NULL, "min='0' max='2000' step='1'");
+iotwebconf::ParameterGroup group5 = iotwebconf::ParameterGroup("LED Part 4");
 
-IotWebConfSeparator separator6 = IotWebConfSeparator("LED Part 5");
+iotwebconf::NumberParameter start4 = iotwebconf::NumberParameter("Start Part 4", "start4", start4Value, NUMBER_LEN, "0", NULL, "min='0' max='2000' step='1'");
+iotwebconf::NumberParameter length4 = iotwebconf::NumberParameter("Length Part 4", "length4", length4Value, NUMBER_LEN, "0", NULL, "min='0' max='2000' step='1'");
 
-IotWebConfParameter start5 = IotWebConfParameter("Start Part 5", "start5", start5Value, NUMBER_LEN, "number", "0", NULL, "min='0' max='2000' step='1'");
-IotWebConfParameter length5 = IotWebConfParameter("Length Part 5", "length5", length5Value, NUMBER_LEN, "number", "0", NULL, "min='0' max='2000' step='1'");
+iotwebconf::ParameterGroup group6 = iotwebconf::ParameterGroup("LED Part 5");
 
-IotWebConfSeparator separator7 = IotWebConfSeparator("LED Part 6");
+iotwebconf::NumberParameter start5 = iotwebconf::NumberParameter("Start Part 5", "start5", start5Value, NUMBER_LEN, "0", NULL, "min='0' max='2000' step='1'");
+iotwebconf::NumberParameter length5 = iotwebconf::NumberParameter("Length Part 5", "length5", length5Value, NUMBER_LEN, "0", NULL, "min='0' max='2000' step='1'");
 
-IotWebConfParameter start6 = IotWebConfParameter("Start Part 6", "start6", start6Value, NUMBER_LEN, "number", "0", NULL, "min='0' max='2000' step='1'");
-IotWebConfParameter length6 = IotWebConfParameter("Length Part 6", "length6", length6Value, NUMBER_LEN, "number", "0", NULL, "min='0' max='2000' step='1'");
+iotwebconf::ParameterGroup group7 = iotwebconf::ParameterGroup("LED Part 6");
 
-IotWebConfSeparator separator8 = IotWebConfSeparator("LED Part 7");
+iotwebconf::NumberParameter start6 = iotwebconf::NumberParameter("Start Part 6", "start6", start6Value, NUMBER_LEN, "0", NULL, "min='0' max='2000' step='1'");
+iotwebconf::NumberParameter length6 = iotwebconf::NumberParameter("Length Part 6", "length6", length6Value, NUMBER_LEN, "0", NULL, "min='0' max='2000' step='1'");
 
-IotWebConfParameter start7 = IotWebConfParameter("Start Part 7", "start7", start7Value, NUMBER_LEN, "number", "0", NULL, "min='0' max='2000' step='1'");
-IotWebConfParameter length7 = IotWebConfParameter("Length Part 7", "length7", length7Value, NUMBER_LEN, "number", "0", NULL, "min='0' max='2000' step='1'");
+iotwebconf::ParameterGroup group8 = iotwebconf::ParameterGroup("LED Part 7");
 
-IotWebConfSeparator separator9 = IotWebConfSeparator("LED Part 8");
+iotwebconf::NumberParameter start7 = iotwebconf::NumberParameter("Start Part 7", "start7", start7Value, NUMBER_LEN, "0", NULL, "min='0' max='2000' step='1'");
+iotwebconf::NumberParameter length7 = iotwebconf::NumberParameter("Length Part 7", "length7", length7Value, NUMBER_LEN, "0", NULL, "min='0' max='2000' step='1'");
 
-IotWebConfParameter start8 = IotWebConfParameter("Start Part 8", "start8", start8Value, NUMBER_LEN, "number", "0", NULL, "min='0' max='2000' step='1'");
-IotWebConfParameter length8 = IotWebConfParameter("Length Part 8", "length8", length8Value, NUMBER_LEN, "number", "0", NULL, "min='0' max='2000' step='1'");
+iotwebconf::ParameterGroup group9 = iotwebconf::ParameterGroup("LED Part 8");
 
-//IotWebConfParameter floatParam = IotWebConfParameter("Float param", "floatParam", floatParamValue, NUMBER_LEN, "number", "e.g. 23.4", NULL, "step='0.1'");
+iotwebconf::NumberParameter start8 = iotwebconf::NumberParameter("Start Part 8", "start8", start8Value, NUMBER_LEN, "0", NULL, "min='0' max='2000' step='1'");
+iotwebconf::NumberParameter length8 = iotwebconf::NumberParameter("Length Part 8", "length8", length8Value, NUMBER_LEN, "0", NULL, "min='0' max='2000' step='1'");
+
+//iotwebconf::NumberParameter floatParam = iotwebconf::NumberParameter("Float param", "floatParam", floatParamValue, NUMBER_LEN, "number", "e.g. 23.4", NULL, "step='0.1'");
 
 IPAddress ipAddress;
 IPAddress gateway;
@@ -289,32 +303,32 @@ const char CUSTOMHTML_FORM_END[] PROGMEM = "</fieldset><button type='submit'>Sav
 // IotWebConfHtmlFormatProvider. Here two method are overriden from
 // the original class. See IotWebConf.h for all potentially overridable
 // methods of IotWebConfHtmlFormatProvider .
-class CustomHtmlFormatProvider : public IotWebConfHtmlFormatProvider
+class CustomHtmlFormatProvider : public iotwebconf::HtmlFormatProvider
 {
   protected:
     String getStyleInner() override
     {
       return
         String(FPSTR(CUSTOMHTML_STYLE_INNER)) +
-        IotWebConfHtmlFormatProvider::getStyleInner();
+        HtmlFormatProvider::getStyleInner();
     }
     String getScriptInner() override
     {
       return
-        IotWebConfHtmlFormatProvider::getScriptInner() +
+        HtmlFormatProvider::getScriptInner() +
         String(FPSTR(CUSTOMHTML_SCRIPT_INNER));
     }
     String getBodyInner() override
     {
       return
         String(FPSTR(CUSTOMHTML_BODY_INNER)) +
-        IotWebConfHtmlFormatProvider::getBodyInner();
+        HtmlFormatProvider::getBodyInner();
     }
     String getHead() override
     {
       return
         String(FPSTR(CUSTOMHTML_HEAD)) +
-        IotWebConfHtmlFormatProvider::getHead();
+        HtmlFormatProvider::getHead();
     }
 
     String getFormEnd() override
@@ -349,7 +363,7 @@ void handleRoot()
 
   s += "<h2>Network</h2>";
   s += "<table>";
-  if (iotWebConf.getState() != IOTWEBCONF_STATE_ONLINE) {
+  if (iotWebConf.getState() != iotwebconf::OnLine) {
     s += "<tr>";
     s += "<td><b>IP address:</b></td>";
     s += "<td>192.168.4.1</td>";
@@ -814,11 +828,13 @@ void setup()
   
   iotWebConf.setStatusPin(STATUS_PIN);
   //iotWebConf.setConfigPin(CONFIG_PIN);
-  iotWebConf.setupUpdateServer(&httpUpdater);
+  iotWebConf.setupUpdateServer(
+    [](const char* updatePath) { httpUpdater.setup(&server, updatePath); },
+    [](const char* userName, char* password) { httpUpdater.updateCredentials(userName, password); });
 
   // -- Applying the new HTML format to IotWebConf.
   iotWebConf.setHtmlFormatProvider(&customHtmlFormatProvider);
-  //iotWebConf.configSave();
+  //iotWebConf.saveConfig();
   //iotWebConf.setConfigPin(0);
   //iotWebConf.init();
 
@@ -829,60 +845,55 @@ void setup()
     iotWebConf.handleNotFound();
   });*/
 
-  IotWebConfParameter* thingNameParam = iotWebConf.getThingNameParameter();
-  thingNameParam->label = "LOXpixel! name";
+  iotWebConf.getThingNameParameter()->label = "LOXpixel! name";
+  iotWebConf.getApPasswordParameter()->label = "LOXpixel! password";
+  iotWebConf.getWifiPasswordParameter()->label = "WiFi password";
 
-  IotWebConfParameter* apPasswordParam = iotWebConf.getApPasswordParameter();
-  apPasswordParam->label = "LOXpixel! password";
-
-  IotWebConfParameter* wifiPasswordParam = iotWebConf.getWifiPasswordParameter();
-  wifiPasswordParam->label = "WiFi password";
-
-  iotWebConf.addParameter(&separator1);
+  iotWebConf.addParameterGroup(&group1);
   
-  iotWebConf.addParameter(&dhcpParam);
-  iotWebConf.addParameter(&ipAddressParam);
-  iotWebConf.addParameter(&gatewayParam);
-  iotWebConf.addParameter(&netmaskParam);
+  group1.addItem(&dhcpParam);
+  group1.addItem(&ipAddressParam);
+  group1.addItem(&gatewayParam);
+  group1.addItem(&netmaskParam);
 
-  iotWebConf.addParameter(&separator0);
+  iotWebConf.addParameterGroup(&group0);
   
-  iotWebConf.addParameter(&stripeTypeParam);
-  iotWebConf.addParameter(&intParam);
-  //iotWebConf.addParameter(&datenpinParam);
-  iotWebConf.addParameter(&brightnessParam);
+  group0.addItem(&stripeTypeParam);
+  group0.addItem(&intParam);
+  //group0.addItem(&datenpinParam);
+  group0.addItem(&brightnessParam);
 
-  iotWebConf.addParameter(&separator2);
-  iotWebConf.addParameter(&start1);
-  iotWebConf.addParameter(&length1);
+  iotWebConf.addParameterGroup(&group2);
+  group2.addItem(&start1);
+  group2.addItem(&length1);
 
-  iotWebConf.addParameter(&separator3);
-  iotWebConf.addParameter(&start2);
-  iotWebConf.addParameter(&length2);
+  iotWebConf.addParameterGroup(&group3);
+  group3.addItem(&start2);
+  group3.addItem(&length2);
 
-  iotWebConf.addParameter(&separator4);
-  iotWebConf.addParameter(&start3);
-  iotWebConf.addParameter(&length3);
+  iotWebConf.addParameterGroup(&group4);
+  group4.addItem(&start3);
+  group4.addItem(&length3);
 
-  iotWebConf.addParameter(&separator5);
-  iotWebConf.addParameter(&start4);
-  iotWebConf.addParameter(&length4);
+  iotWebConf.addParameterGroup(&group5);
+  group5.addItem(&start4);
+  group5.addItem(&length4);
 
-  iotWebConf.addParameter(&separator6);
-  iotWebConf.addParameter(&start5);
-  iotWebConf.addParameter(&length5);
+  iotWebConf.addParameterGroup(&group6);
+  group6.addItem(&start5);
+  group6.addItem(&length5);
 
-  iotWebConf.addParameter(&separator7);
-  iotWebConf.addParameter(&start6);
-  iotWebConf.addParameter(&length6);
+  iotWebConf.addParameterGroup(&group7);
+  group7.addItem(&start6);
+  group7.addItem(&length6);
 
-  iotWebConf.addParameter(&separator8);
-  iotWebConf.addParameter(&start7);
-  iotWebConf.addParameter(&length7);
+  iotWebConf.addParameterGroup(&group8);
+  group8.addItem(&start7);
+  group8.addItem(&length7);
 
-  iotWebConf.addParameter(&separator9);
-  iotWebConf.addParameter(&start8);
-  iotWebConf.addParameter(&length8);
+  iotWebConf.addParameterGroup(&group9);
+  group9.addItem(&start8);
+  group9.addItem(&length8);
 
   //iotWebConf.addParameter(&floatParam);
 
@@ -1813,7 +1824,7 @@ void configSaved()
   needreset = true;
 }
 
-boolean formValidator()
+boolean formValidator(iotwebconf::WebRequestWrapper* webRequestWrapper)
 {
   boolean valid = true;
 
